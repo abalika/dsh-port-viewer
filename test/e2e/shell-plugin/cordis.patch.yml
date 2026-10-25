@@ -1,0 +1,9 @@
+# E2E shell bundle patch
+#
+# Mounts the throwaway host half + client half used by scripts/verify-isolated.ps1
+# to prove that an isolated dsh web instance can load a profile-linked plugin and
+# serve its HTTP route and browser bundle. This file is a verification fixture:
+# it is never installed into the desktop profile and carries no product logic.
+- insert:
+    - id: port-viewer
+      name: 'dsh-port-viewer'

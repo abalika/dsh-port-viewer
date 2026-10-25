@@ -1,0 +1,27 @@
+# dsh-port-viewer bundle patch
+#
+# Mounts the plugin row into the profile. Installing through the official CLI —
+#
+#   dsh plugin --profile desktop add file:D:/其它挂件项目/端口可视化
+#
+# — reconciles `dsh.profile.bundles` against installed packages and, seeing this
+# declaration, appends `dsh-port-viewer` to the bundle stack.
+#
+# The host half registers two same-origin routes
+# (GET /api/port-viewer/snapshot, POST /api/port-viewer/kill); the browser half
+# injects the launcher pill and the port drawer into the web shell. Both halves
+# are inert without each other, so the pill only does something when the whole
+# plugin is mounted.
+#
+# Config defaults live in lib/index.js. To change them, override this row from
+# the profile's own cordis.patch.yml:
+#
+#   - id: port-viewer
+#     name: "dsh-port-viewer"
+#     config:
+#       protectSystem: true
+#       ttlMs: 1200
+#       snapshotTimeoutMs: 15000
+- insert:
+    - id: port-viewer
+      name: 'dsh-port-viewer'

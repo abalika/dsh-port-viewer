@@ -1,0 +1,14 @@
+{
+  "_why": "降级快照：CIM 查询失败 / 权限不足时 processes 为空，只剩 netstat 的 listeners。buildPortView 必须不崩、不丢端口。",
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-25T10:00:00.000+08:00",
+  "computerName": "FIXTURE-PC",
+  "timingsMs": { "compile": 0, "netstat": 40, "processes": 0, "cwd": 0, "total": 40 },
+  "listeners": [
+    { "protocol": "TCP", "localAddress": "0.0.0.0", "port": 8080, "pid": 4321 },
+    { "protocol": "TCP", "localAddress": "[::]", "port": 8080, "pid": 4321 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 9999, "pid": 8765 }
+  ],
+  "processes": [],
+  "errors": ["cim-query-failed: 访问被拒绝"]
+}

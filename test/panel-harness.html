@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-port-viewer · panel harness</title>
+<!--
+  dsh-port-viewer 的浏览器半边自测台（不是产品文件）。
+
+  它做三件事：
+  1. 逐字复制真实 dsh 主题里明暗两套 --dsw-* 变量定义（从桌面端 app.asar 的
+     ui-theme 样式里抽出来的原样 CSS），所以截图和真实界面同色。
+  2. 画一个假的 shell（侧边栏 + 会话）当作面板背后的内容，用来验证半透明 + 模糊
+     在真实质感上是否成立，以及不与右下角 go-svc 胶囊（bottom:16px）打架。
+  3. mock window.__ModuleLoader__ / ctx.effect / fetch，注入一份 fixture 快照后
+     通过 URL 参数驱动到指定状态，供无头 Edge 截图。
+
+  用法（file:// 直接打开即可，fetch 已被 mock，不需要起服务）：
+    test/panel-harness.html?theme=dark&view=open
+    test/panel-harness.html?theme=light&view=confirm      # 行内二次确认态
+    test/panel-harness.html?theme=dark&view=closed        # 收起态（只有胶囊）
+    view: closed | open | confirm | group-confirm | search | collapsed | empty | error | loading
+    collapse=<分组名>  展开后顺手收起该分组
+-->
+<style>
+/* ==========================================================================
+   1) 真实 dsh 主题变量（逐字复制，勿改）：明色 body{} / 暗色 body[data-ds-dark-theme]
+   ========================================================================== */
+:root{--dsh-font-family-text-default:-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;--dsw-font-family:var(--dsh-font-family-text-default);--dsw-font-family-brand:"Montserrat", var(--dsh-font-family-text-default);--dsh-font-family-code-default:"SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, Courier, "PingFang SC", "Microsoft YaHei";--ds-font-family-code:var(--dsh-font-family-code-default);--ds-ease-in-out:cubic-bezier(.4, 0, .2, 1);--ds-transition-duration:.2s;--ds-transition-duration-fast:.1s;--ds-transition-duration-slow:.3s;--dsw-radius-xs:4px;--dsw-radius-sm:8px;--dsw-radius-md:12px;--dsw-radius-lg:16px;--dsw-radius-xl:20px;--dsw-radius-panel:28px}
+body{--dsw-font-family:var(--dsh-font-family-text,var(--dsh-font-family-text-default)), var(--dsh-font-family-text-default);--ds-font-family-code:var(--dsh-font-family-code,var(--dsh-font-family-code-default)), var(--dsh-font-family-code-default);--dsw-alias-settings-card-fill:var(--dsw-alias-bg-layer-2);--dsw-alias-settings-card-stroke:var(--dsw-alias-border-l4)}
+body{--dsw-static-amber-100: rgb(254, 245, 231);--dsw-static-amber-400: rgb(247, 173, 49);--dsw-static-amber-500: rgb(245, 158, 11);--dsw-static-amber-600: rgb(221, 134, 41);--dsw-static-amber-900: rgb(39, 36, 31);--dsw-static-blue-100: rgb(219, 234, 254);--dsw-static-blue-300: rgb(147, 197, 253);--dsw-static-blue-400: rgb(96, 165, 250);--dsw-static-blue-450: rgb(77, 147, 248);--dsw-static-blue-500: rgb(59, 130, 246);--dsw-static-blue-50: rgb(239, 246, 255);--dsw-static-blue-50p: rgb(234, 243, 255);--dsw-static-blue-600: rgb(37, 99, 235);--dsw-static-blue-75: rgb(229, 240, 255);--dsw-static-blue-800: rgb(30, 64, 175);--dsw-static-blue-900: rgb(14, 48, 116);--dsw-static-blue-950: rgb(23, 37, 84);--dsw-static-deepseek-100: rgb(228, 237, 253);--dsw-static-deepseek-200: rgb(211, 226, 255);--dsw-static-deepseek-300: rgb(183, 200, 254);--dsw-static-deepseek-400: rgb(122, 170, 255);--dsw-static-deepseek-450: rgb(86, 134, 254);--dsw-static-deepseek-500: rgb(65, 118, 230);--dsw-static-deepseek-50: rgb(237, 243, 254);--dsw-static-deepseek-600: rgb(72, 104, 178);--dsw-static-deepseek-700-delete: rgb(47, 76, 143);--dsw-static-deepseek-800: rgb(52, 65, 91);--dsw-static-deepseek-900: rgb(40, 49, 66);--dsw-static-green-100: rgb(230, 250, 237);--dsw-static-green-400: rgb(78, 209, 126);--dsw-static-green-500: rgb(34, 197, 94);--dsw-static-green-500-a08: rgb(34 197 94 / 8%);--dsw-static-green-500-a12: rgb(34 197 94 / 12%);--dsw-static-green-900: rgb(35, 60, 44);--dsw-static-neutral-00: rgb(255, 255, 255);--dsw-static-neutral-1000: rgb(0, 0, 0);--dsw-static-neutral-100: rgb(245, 245, 245);--dsw-static-neutral-150: rgb(237, 237, 237);--dsw-static-neutral-200: rgb(229, 229, 229);--dsw-static-neutral-250: rgb(220, 220, 220);--dsw-static-neutral-300: rgb(212, 212, 212);--dsw-static-neutral-400: rgb(162, 164, 166);--dsw-static-neutral-500: rgb(127, 130, 135);--dsw-static-neutral-50: rgb(250, 250, 250);--dsw-static-neutral-550: rgb(101, 103, 107);--dsw-static-neutral-600: rgb(84, 85, 87);--dsw-static-neutral-700: rgb(60, 60, 61);--dsw-static-neutral-800: rgb(41, 41, 41);--dsw-static-neutral-850: rgb(33, 33, 35);--dsw-static-neutral-900: rgb(15, 15, 15);--dsw-static-neutral-bluish-00: rgb(255, 255, 255);--dsw-static-neutral-bluish-1000: rgb(15, 17, 21);--dsw-static-neutral-bluish-100: rgb(235, 238, 242);--dsw-static-neutral-bluish-150: rgb(233, 236, 242);--dsw-static-neutral-bluish-200: rgb(225, 229, 238);--dsw-static-neutral-bluish-300: rgb(207, 211, 214);--dsw-static-neutral-bluish-400: rgb(173, 178, 184);--dsw-static-neutral-bluish-500: rgb(151, 157, 166);--dsw-static-neutral-bluish-50: rgb(249, 250, 251);--dsw-static-neutral-bluish-600: rgb(129, 133, 140);--dsw-static-neutral-bluish-60: rgb(245, 246, 247);--dsw-static-neutral-bluish-700: rgb(97, 102, 107);--dsw-static-neutral-bluish-750: rgb(67, 69, 74);--dsw-static-neutral-bluish-75: rgb(241, 243, 245);--dsw-static-neutral-bluish-800: rgb(53, 54, 56);--dsw-static-neutral-bluish-850: rgb(44, 44, 46);--dsw-static-neutral-bluish-875: rgb(35, 35, 36);--dsw-static-neutral-bluish-900: rgb(27, 27, 28);--dsw-static-neutral-bluish-950: rgb(21, 21, 23);--dsw-static-red-100: rgb(254, 226, 226);--dsw-static-red-400: rgb(242, 90, 90);--dsw-static-red-400-a12: rgb(242 90 90 / 12%);--dsw-static-red-500: rgb(239, 68, 68);--dsw-static-red-50: rgb(254, 242, 242);--dsw-static-red-600: rgb(236, 19, 19);--dsw-static-red-600-a08: rgb(236 19 19 / 8%);--dsw-static-red-900: rgb(87, 12, 12)}
+body[data-ds-dark-theme]{--dsw-static-amber-100: rgb(254, 245, 231);--dsw-static-amber-400: rgb(247, 173, 49);--dsw-static-amber-500: rgb(245, 158, 11);--dsw-static-amber-600: rgb(221, 134, 41);--dsw-static-amber-900: rgb(39, 36, 31);--dsw-static-blue-100: rgb(219, 234, 254);--dsw-static-blue-300: rgb(147, 197, 253);--dsw-static-blue-400: rgb(96, 165, 250);--dsw-static-blue-450: rgb(77, 147, 248);--dsw-static-blue-500: rgb(59, 130, 246);--dsw-static-blue-50: rgb(239, 246, 255);--dsw-static-blue-50p: rgb(234, 243, 255);--dsw-static-blue-600: rgb(37, 99, 235);--dsw-static-blue-75: rgb(229, 240, 255);--dsw-static-blue-800: rgb(30, 64, 175);--dsw-static-blue-900: rgb(14, 48, 116);--dsw-static-blue-950: rgb(23, 37, 84);--dsw-static-deepseek-100: rgb(228, 237, 253);--dsw-static-deepseek-200: rgb(211, 226, 255);--dsw-static-deepseek-300: rgb(183, 200, 254);--dsw-static-deepseek-400: rgb(122, 170, 255);--dsw-static-deepseek-450: rgb(86, 134, 254);--dsw-static-deepseek-500: rgb(65, 118, 230);--dsw-static-deepseek-50: rgb(237, 243, 254);--dsw-static-deepseek-600: rgb(72, 104, 178);--dsw-static-deepseek-700-delete: rgb(47, 76, 143);--dsw-static-deepseek-800: rgb(52, 65, 91);--dsw-static-deepseek-900: rgb(40, 49, 66);--dsw-static-green-100: rgb(230, 250, 237);--dsw-static-green-400: rgb(78, 209, 126);--dsw-static-green-500: rgb(34, 197, 94);--dsw-static-green-500-a08: rgb(34 197 94 / 8%);--dsw-static-green-500-a12: rgb(34 197 94 / 12%);--dsw-static-green-900: rgb(35, 60, 44);--dsw-static-neutral-00: rgb(255, 255, 255);--dsw-static-neutral-1000: rgb(0, 0, 0);--dsw-static-neutral-100: rgb(245, 245, 245);--dsw-static-neutral-150: rgb(237, 237, 237);--dsw-static-neutral-200: rgb(229, 229, 229);--dsw-static-neutral-250: rgb(220, 220, 220);--dsw-static-neutral-300: rgb(212, 212, 212);--dsw-static-neutral-400: rgb(162, 164, 166);--dsw-static-neutral-500: rgb(127, 130, 135);--dsw-static-neutral-50: rgb(250, 250, 250);--dsw-static-neutral-550: rgb(101, 103, 107);--dsw-static-neutral-600: rgb(84, 85, 87);--dsw-static-neutral-700: rgb(60, 60, 61);--dsw-static-neutral-800: rgb(41, 41, 41);--dsw-static-neutral-850: rgb(33, 33, 35);--dsw-static-neutral-900: rgb(15, 15, 15);--dsw-static-neutral-bluish-00: rgb(255, 255, 255);--dsw-static-neutral-bluish-1000: rgb(15, 17, 21);--dsw-static-neutral-bluish-100: rgb(235, 238, 242);--dsw-static-neutral-bluish-150: rgb(233, 236, 242);--dsw-static-neutral-bluish-200: rgb(225, 229, 238);--dsw-static-neutral-bluish-300: rgb(207, 211, 214);--dsw-static-neutral-bluish-400: rgb(173, 178, 184);--dsw-static-neutral-bluish-500: rgb(151, 157, 166);--dsw-static-neutral-bluish-50: rgb(249, 250, 251);--dsw-static-neutral-bluish-600: rgb(129, 133, 140);--dsw-static-neutral-bluish-60: rgb(249, 250, 251);--dsw-static-neutral-bluish-700: rgb(97, 102, 107);--dsw-static-neutral-bluish-750: rgb(67, 69, 74);--dsw-static-neutral-bluish-75: rgb(241, 243, 245);--dsw-static-neutral-bluish-800: rgb(53, 54, 56);--dsw-static-neutral-bluish-850: rgb(44, 44, 46);--dsw-static-neutral-bluish-875: rgb(35, 35, 36);--dsw-static-neutral-bluish-900: rgb(27, 27, 28);--dsw-static-neutral-bluish-950: rgb(21, 21, 23);--dsw-static-red-100: rgb(254, 226, 226);--dsw-static-red-400: rgb(242, 90, 90);--dsw-static-red-400-a12: rgb(242 90 90 / 12%);--dsw-static-red-500: rgb(239, 68, 68);--dsw-static-red-50: rgb(254, 242, 242);--dsw-static-red-600: rgb(236, 19, 19);--dsw-static-red-600-a08: rgb(236 19 19 / 8%);--dsw-static-red-900: rgb(87, 12, 12)}
+body{--dsw-alias-bg-base: var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-document-preview: var(--dsw-static-neutral-bluish-100);--dsw-alias-bg-document-selection: color-mix(in srgb, var(--dsw-static-blue-500) 40%, transparent);--dsw-alias-label-document-preview: var(--dsw-static-neutral-bluish-700);--dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-layer-2: var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-layer-3: var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-mask-1: rgba(0, 0, 0, .24);--dsw-alias-bg-mask-2: rgba(0, 0, 0, .12);--dsw-alias-bg-mask-3: rgba(0, 0, 0, .48);--dsw-alias-bg-mask-photo: rgba(0, 0, 0, .88);--dsw-alias-bg-mask-drop: rgba(255, 255, 255, .7);--dsw-alias-bg-module-platform: var(--dsw-static-neutral-bluish-60);--dsw-alias-bg-multi-select: var(--dsw-static-neutral-bluish-60);--dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-150);--dsw-alias-bg-skeleton: rgba(0, 0, 0, .04);--dsw-alias-border-inverted2: rgba(0, 0, 0, 0);--dsw-alias-border-inverted: rgba(0, 0, 0, 0);--dsw-alias-border-l1: rgba(0, 0, 0, .04);--dsw-alias-border-l2-darkmode-thin: rgba(0, 0, 0, .1);--dsw-alias-border-l2: rgba(0, 0, 0, .1);--dsw-alias-border-l3: rgba(0, 0, 0, .12);--dsw-alias-border-l4: rgba(0, 0, 0, .16);--dsw-alias-brand-primary-invert: var(--dsw-static-neutral-bluish-1000);--dsw-alias-brand-primary-new-colorprimary-new-color: rgb(65, 118, 230);--dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-1000);--dsw-alias-brand-text: var(--dsw-static-neutral-bluish-1000);--dsw-alias-button-contrast-fill: var(--dsw-static-neutral-bluish-700);--dsw-alias-button-elevated-fill: var(--dsw-static-neutral-bluish-00);--dsw-alias-button-floating-fill: var(--dsw-static-neutral-bluish-00);--dsw-alias-button-floating-hover: var(--dsw-static-neutral-bluish-75);--dsw-alias-button-ghost-active-border: var(--dsw-static-neutral-bluish-500);--dsw-alias-button-ghost-active-fill: var(--dsw-static-neutral-bluish-100);--dsw-alias-button-ghost-active-hover: var(--dsw-static-neutral-bluish-150);--dsw-alias-button-info-fill: var(--dsw-static-deepseek-500);--dsw-alias-button-info-hover: var(--dsw-static-deepseek-400);--dsw-alias-button-primary-dimmed: var(--dsw-static-neutral-bluish-100);--dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary);--dsw-alias-button-primary-hover: var(--dsw-static-neutral-bluish-750);--dsw-alias-button-tool-bar-fill-invisible: rgba(31, 31, 31, .36);--dsw-alias-button-tool-bar-fill: rgba(84, 85, 87, .5);--dsw-alias-button-tool-bar-hover: rgba(84, 85, 87, .6);--dsw-alias-interactive-bg-active: rgba(38, 49, 72, .1);--dsw-alias-interactive-bg-hover-accent: rgba(38, 49, 72, .14);--dsw-alias-interactive-bg-hover-danger: rgba(236, 19, 19, .05);--dsw-alias-interactive-bg-hover-solid: var(--dsw-static-neutral-bluish-75);--dsw-alias-interactive-bg-hover: rgba(38, 49, 72, .06);--dsw-alias-label-caption: var(--dsw-static-neutral-bluish-400);--dsw-alias-label-deep-diving: color-mix(in srgb, var(--dsw-static-deepseek-500) 70%, var(--dsw-static-blue-950));--dsw-alias-label-deep-diving-shimmer: color-mix(in srgb, var(--dsw-static-deepseek-500) 30%, var(--dsw-static-blue-950));--dsw-alias-label-dimmed: var(--dsw-static-neutral-bluish-200);--dsw-alias-label-primary-bluish: var(--dsw-static-blue-900);--dsw-alias-label-primary-dimmed: var(--dsw-static-neutral-bluish-950);--dsw-alias-label-primary-foreground: var(--dsw-static-neutral-bluish-00);--dsw-alias-label-primary-inverted: var(--dsw-static-neutral-bluish-00);--dsw-alias-label-primary: var(--dsw-static-neutral-bluish-1000);--dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-700);--dsw-alias-label-shimmer: color-mix(in srgb, var(--dsw-static-neutral-1000) 30%, transparent);--dsw-alias-label-tertiary: var(--dsw-static-neutral-bluish-600);--dsw-alias-menu-icon: var(--dsw-static-neutral-bluish-800);--dsw-alias-link: var(--dsw-static-deepseek-500);--dsw-alias-markdown-citation: var(--dsw-static-neutral-bluish-100);--dsw-alias-markdown-code-block-banner: var(--dsw-static-neutral-bluish-50);--dsw-alias-markdown-code-block: var(--dsw-static-neutral-bluish-50);--dsw-alias-markdown-code-segment-selected: var(--dsw-static-neutral-bluish-00);--dsw-alias-markdown-code-segment-unselected: var(--dsw-static-neutral-bluish-75);--dsw-alias-markdown-inline-code: var(--dsw-static-neutral-50);--dsw-alias-markdown-placeholder: var(--dsw-static-neutral-bluish-60);--dsw-alias-markdown-tag: var(--dsw-static-neutral-bluish-75);--dsw-alias-scrollbar-bg-l1: var(--dsw-static-neutral-200);--dsw-alias-scrollbar-bg-l2: var(--dsw-static-neutral-200);--dsw-alias-scrollbar-hover-l1: var(--dsw-static-neutral-300);--dsw-alias-scrollbar-hover-l2: var(--dsw-static-neutral-300);--dsw-alias-state-business-primary: var(--dsw-static-deepseek-500);--dsw-alias-state-business-tertiary: var(--dsw-static-deepseek-100);--dsw-alias-code-diff-added: var(--dsw-static-green-500-a08);--dsw-alias-code-diff-deleted: var(--dsw-static-red-600-a08);--dsw-alias-file-diff-added-bg: rgb(230, 244, 231);--dsw-alias-file-diff-added-gutter: rgb(237, 247, 237);--dsw-alias-file-diff-added-marker: rgb(1, 162, 65);--dsw-alias-file-diff-deleted-bg: rgb(252, 230, 226);--dsw-alias-file-diff-deleted-gutter: rgb(253, 236, 233);--dsw-alias-file-diff-deleted-marker: rgb(186, 39, 35);--dsw-alias-state-error-primary: var(--dsw-static-red-600);--dsw-alias-state-error-secondary: var(--dsw-static-red-400);--dsw-alias-state-idle-primary: var(--dsw-static-neutral-300);--dsw-alias-state-success-primary: var(--dsw-static-green-500);--dsw-alias-state-success-secondary: var(--dsw-static-green-400);--dsw-alias-state-success-tertiary: var(--dsw-static-green-100);--dsw-alias-state-warn-label: var(--dsw-static-amber-600);--dsw-alias-state-warn-primary: var(--dsw-static-amber-500);--dsw-alias-state-warn-secondary: var(--dsw-static-amber-400);--dsw-alias-state-warn-tertiary: var(--dsw-static-amber-100);--dsw-alias-switch-thumb: var(--dsw-static-neutral-bluish-00);--dsw-alias-toast-bg: var(--dsw-static-neutral-bluish-800);--dsw-alias-toast-label: var(--dsw-static-neutral-bluish-00);--dsw-alias-tooltip-bg: var(--dsw-static-neutral-bluish-850);--dsw-alias-tooltip-key-bg: color-mix(in srgb, var(--dsw-alias-tooltip-bg), white 18%);--dsw-alias-turn-trigger-bg: var(--dsw-alias-markdown-code-block);--dsw-alias-turn-trigger-bg-hover: var(--dsw-alias-interactive-bg-hover);--dsw-specific-bubble-highlight: var(--dsw-static-deepseek-200);--dsw-specific-bubble: var(--dsw-static-deepseek-50);--dsw-specific-input-major: var(--dsw-static-neutral-bluish-00);--dsw-specific-login-input: var(--dsw-static-neutral-bluish-50);--dsw-menu-surface-fill: rgba(248, 249, 250, .58);--dsw-alias-menu-group-header-fill: rgba(248, 249, 250, .94);--dsw-specific-menu: var(--dsw-menu-surface-fill);--dsw-specific-selector: var(--dsw-static-neutral-bluish-60);--dsw-specific-sidebar-fill: var(--dsw-static-neutral-bluish-50);--dsw-specific-sidebar-nav-item-active-accent: var(--dsw-static-deepseek-100);--dsw-specific-sidebar-nav-item-active: var(--dsw-static-neutral-bluish-100);--dsw-specific-sidebar-nav-item-hover: var(--dsw-static-neutral-bluish-75);--dsw-specific-tip: var(--dsw-static-neutral-bluish-60);background-color:var(--dsw-alias-bg-base)}
+body[data-ds-dark-theme]{--dsw-alias-bg-base: var(--dsw-static-neutral-bluish-950);--dsw-alias-bg-document-preview: var(--dsw-static-neutral-bluish-950);--dsw-alias-bg-document-selection: color-mix(in srgb, var(--dsw-static-blue-500) 40%, transparent);--dsw-alias-label-document-preview: var(--dsw-static-neutral-bluish-300);--dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-875);--dsw-alias-bg-layer-2: var(--dsw-static-neutral-bluish-850);--dsw-alias-bg-layer-3: var(--dsw-static-neutral-bluish-800);--dsw-alias-bg-mask-1: rgba(0, 0, 0, .5);--dsw-alias-bg-mask-2: rgba(0, 0, 0, .2);--dsw-alias-bg-mask-3: rgba(0, 0, 0, .48);--dsw-alias-bg-mask-photo: rgba(0, 0, 0, .88);--dsw-alias-bg-mask-drop: rgba(39, 39, 48, .7);--dsw-alias-bg-module-platform: var(--dsw-static-neutral-bluish-800);--dsw-alias-bg-multi-select: var(--dsw-static-neutral-850);--dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-700);--dsw-alias-bg-skeleton: rgba(255, 255, 255, .08);--dsw-alias-border-inverted2: rgba(255, 255, 255, .08);--dsw-alias-border-inverted: rgba(255, 255, 255, .06);--dsw-alias-border-l1: rgba(255, 255, 255, .06);--dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, .06);--dsw-alias-border-l2: rgba(255, 255, 255, .12);--dsw-alias-border-l3: rgba(255, 255, 255, .16);--dsw-alias-border-l4: rgba(255, 255, 255, .2);--dsw-alias-brand-primary-invert: var(--dsw-static-neutral-bluish-50);--dsw-alias-brand-primary-new-colorprimary-new-color: var(--dsw-static-deepseek-450);--dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-50);--dsw-alias-brand-text: var(--dsw-static-neutral-bluish-50);--dsw-alias-button-contrast-fill: var(--dsw-static-neutral-bluish-50);--dsw-alias-button-elevated-fill: var(--dsw-static-neutral-bluish-750);--dsw-alias-button-floating-fill: var(--dsw-static-neutral-bluish-850);--dsw-alias-button-floating-hover: var(--dsw-static-neutral-bluish-800);--dsw-alias-button-ghost-active-border: var(--dsw-static-neutral-bluish-600);--dsw-alias-button-ghost-active-fill: var(--dsw-static-neutral-bluish-750);--dsw-alias-button-ghost-active-hover: var(--dsw-static-neutral-bluish-700);--dsw-alias-button-info-fill: var(--dsw-static-deepseek-400);--dsw-alias-button-info-hover: var(--dsw-static-deepseek-500);--dsw-alias-button-primary-dimmed: var(--dsw-static-neutral-bluish-750);--dsw-alias-button-primary-fill: var(--dsw-alias-brand-primary);--dsw-alias-button-primary-hover: var(--dsw-static-neutral-bluish-100);--dsw-alias-button-tool-bar-fill-invisible: rgba(31, 31, 31, .36);--dsw-alias-button-tool-bar-fill: rgba(84, 85, 87, .5);--dsw-alias-button-tool-bar-hover: rgba(84, 85, 87, .6);--dsw-alias-interactive-bg-active: rgba(255, 255, 255, .14);--dsw-alias-interactive-bg-hover-accent: rgba(255, 255, 255, .24);--dsw-alias-interactive-bg-hover-danger: rgba(242, 90, 90, .15);--dsw-alias-interactive-bg-hover-solid: var(--dsw-static-neutral-bluish-800);--dsw-alias-interactive-bg-hover: rgba(255, 255, 255, .08);--dsw-alias-label-caption: var(--dsw-static-neutral-bluish-600);--dsw-alias-label-deep-diving: color-mix(in srgb, var(--dsw-static-deepseek-450) 55%, var(--dsw-static-neutral-bluish-400));--dsw-alias-label-deep-diving-shimmer: color-mix(in srgb, var(--dsw-static-blue-300) 65%, var(--dsw-static-deepseek-400));--dsw-alias-label-dimmed: var(--dsw-static-neutral-bluish-750);--dsw-alias-label-primary-bluish: var(--dsw-static-neutral-bluish-50);--dsw-alias-label-primary-dimmed: var(--dsw-static-neutral-bluish-100);--dsw-alias-label-primary-foreground: var(--dsw-static-neutral-bluish-1000);--dsw-alias-label-primary-inverted: var(--dsw-static-neutral-bluish-800);--dsw-alias-label-primary: var(--dsw-static-neutral-bluish-50);--dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-300);--dsw-alias-label-shimmer: color-mix(in srgb, var(--dsw-static-neutral-00) 45%, transparent);--dsw-alias-label-tertiary: var(--dsw-static-neutral-bluish-400);--dsw-alias-menu-icon: var(--dsw-alias-label-primary-dimmed);--dsw-alias-link: var(--dsw-static-deepseek-400);--dsw-alias-markdown-citation: var(--dsw-static-neutral-bluish-800);--dsw-alias-markdown-code-block-banner: var(--dsw-static-neutral-bluish-850);--dsw-alias-markdown-code-block: var(--dsw-static-neutral-bluish-900);--dsw-alias-markdown-code-segment-selected: var(--dsw-static-neutral-bluish-800);--dsw-alias-markdown-code-segment-unselected: var(--dsw-static-neutral-bluish-900);--dsw-alias-markdown-inline-code: var(--dsw-static-neutral-800);--dsw-alias-markdown-placeholder: var(--dsw-static-neutral-bluish-850);--dsw-alias-markdown-tag: var(--dsw-static-neutral-bluish-850);--dsw-alias-scrollbar-bg-l1: var(--dsw-static-neutral-700);--dsw-alias-scrollbar-bg-l2: var(--dsw-static-neutral-600);--dsw-alias-scrollbar-hover-l1: var(--dsw-static-neutral-600);--dsw-alias-scrollbar-hover-l2: var(--dsw-static-neutral-550);--dsw-alias-state-business-primary: var(--dsw-static-deepseek-400);--dsw-alias-state-business-tertiary: var(--dsw-static-deepseek-800);--dsw-alias-code-diff-added: var(--dsw-static-green-500-a12);--dsw-alias-code-diff-deleted: var(--dsw-static-red-400-a12);--dsw-alias-file-diff-added-bg: rgb(31, 49, 36);--dsw-alias-file-diff-added-gutter: rgb(19, 32, 22);--dsw-alias-file-diff-added-marker: rgb(65, 201, 119);--dsw-alias-file-diff-deleted-bg: rgb(60, 31, 27);--dsw-alias-file-diff-deleted-gutter: rgb(40, 19, 14);--dsw-alias-file-diff-deleted-marker: rgb(250, 66, 62);--dsw-alias-state-error-primary: var(--dsw-static-red-400);--dsw-alias-state-error-secondary: var(--dsw-static-red-400);--dsw-alias-state-idle-primary: var(--dsw-static-neutral-600);--dsw-alias-state-success-primary: var(--dsw-static-green-500);--dsw-alias-state-success-secondary: var(--dsw-static-green-400);--dsw-alias-state-success-tertiary: var(--dsw-static-green-900);--dsw-alias-state-warn-label: var(--dsw-static-amber-600);--dsw-alias-state-warn-primary: var(--dsw-static-amber-500);--dsw-alias-state-warn-secondary: var(--dsw-static-amber-400);--dsw-alias-state-warn-tertiary: var(--dsw-static-amber-900);--dsw-alias-switch-thumb: var(--dsw-static-neutral-bluish-400);--dsw-alias-toast-bg: var(--dsw-static-neutral-bluish-750);--dsw-alias-toast-label: var(--dsw-static-neutral-bluish-00);--dsw-alias-turn-trigger-bg: var(--dsw-alias-interactive-bg-hover);--dsw-alias-turn-trigger-bg-hover: var(--dsw-alias-interactive-bg-active);--dsw-alias-tooltip-bg: var(--dsw-static-neutral-bluish-750);--dsw-alias-tooltip-key-bg: color-mix(in srgb, var(--dsw-alias-tooltip-bg), white 18%);--dsw-specific-bubble-highlight: var(--dsw-static-neutral-bluish-750);--dsw-specific-bubble: var(--dsw-static-neutral-bluish-850);--dsw-specific-input-major: var(--dsw-static-neutral-bluish-850);--dsw-specific-login-input: var(--dsw-static-neutral-bluish-900);--dsw-menu-surface-fill: rgba(67, 69, 74, .45);--dsw-alias-menu-group-header-fill: rgba(48, 49, 54, .94);--dsw-specific-menu: var(--dsw-menu-surface-fill);--dsw-specific-selector: var(--dsw-static-neutral-bluish-800);--dsw-specific-sidebar-fill: var(--dsw-static-neutral-bluish-900);--dsw-specific-sidebar-nav-item-active-accent: var(--dsw-static-neutral-bluish-800);--dsw-specific-sidebar-nav-item-active: var(--dsw-static-neutral-bluish-750);--dsw-specific-sidebar-nav-item-hover: var(--dsw-static-neutral-bluish-850);--dsw-specific-tip: var(--dsw-static-neutral-bluish-800)}
+body{--dsw-linear-gradient-think: linear-gradient(180deg, #fff 20.19%, rgba(255, 255, 255, 0) 100%);--dsw-linear-think-select: linear-gradient(180deg, #f5f6f7 20.19%, rgba(245, 246, 247, 0) 100%);--dsw-shadow-lv1: 0 2px 4px 0 rgba(0, 0, 0, .05);--dsw-shadow-lv1-blur: 0 4px 12px 0 rgba(0, 0, 0, .02);--dsw-shadow-lv2: 0 4px 12px 0 rgba(0, 0, 0, .02), 0 2px 8px 0 rgba(0, 0, 0, .04);--dsw-shadow-lv3: 0 0 1px 0 rgba(0, 0, 0, .2), 0 0 4px 0 rgba(0, 0, 0, .02), 0 12px 32px 0 rgba(0, 0, 0, .08);--dsw-elevation-stroke-color: var(--dsw-alias-border-l4);--dsw-mask-blur: none;--dsw-menu-backdrop-filter: blur(40px) saturate(150%)}
+body,body *{--dsw-elevation-stroke: 0 0 0 .5px var(--dsw-elevation-stroke-color);--dsw-elevation-panel: var(--dsw-elevation-stroke), 0 3px 8px 0 rgba(0, 0, 0, .03), 0 0 16px 0 rgba(0, 0, 0, .02);--dsw-elevation-prominent: var(--dsw-elevation-stroke), 0 3px 8px 0 rgba(0, 0, 0, .04), 0 0 20px 0 rgba(0, 0, 0, .05);--dsw-elevation-soft: var(--dsw-elevation-stroke), 0 4px 16px 0 rgba(0, 0, 0, .03), 0 0 24px 0 rgba(0, 0, 0, .03)}
+/* ui-theme/fonts 里声明的代码字体 token（值与真实定义一致），客户端只用这一条。 */
+body{--dsw-font-markdown-code-font-family: var(--ds-font-family-code)}
+
+/* ==========================================================================
+   2) harness 假壳：只为给面板一个真实背景，不算产品代码
+   ========================================================================== */
+html,body{height:100%}
+body{
+  margin:0;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);
+  font-family:var(--dsw-font-family);font-size:14px;line-height:22px;
+  -webkit-font-smoothing:antialiased;
+}
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);height:100%;overflow:hidden}
+.rail{
+  display:flex;flex-direction:column;gap:2px;
+  padding:14px 10px;border-right:1px solid var(--dsw-alias-border-l1);
+  background:color-mix(in srgb,var(--dsw-alias-label-primary) 3%,var(--dsw-alias-bg-base));
+  overflow:hidden;
+}
+.rail-brand{display:flex;align-items:center;gap:8px;padding:2px 8px 12px;font-size:13px;font-weight:600}
+.rail-logo{
+  width:18px;height:18px;border-radius:6px;flex:none;
+  background:var(--dsw-alias-brand-primary);
+}
+.rail-group{padding:10px 8px 4px;font-size:11px;color:var(--dsw-alias-label-caption)}
+.rail-item{
+  padding:6px 8px;border-radius:var(--dsw-radius-sm);font-size:13px;
+  color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rail-item.is-active{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.stage{display:flex;flex-direction:column;min-width:0}
+.stage-head{padding:18px 32px 14px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.stage-title{font-size:15px;font-weight:600}
+.stage-sub{margin-top:2px;font-size:12px;color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code)}
+.stage-body{flex:1 1 auto;min-height:0;overflow:hidden;padding:26px 32px;display:flex;flex-direction:column;gap:18px}
+.msg-user{
+  align-self:flex-end;max-width:56%;padding:10px 14px;border-radius:12px;
+  background:color-mix(in srgb,var(--dsw-alias-label-primary) 6%,var(--dsw-alias-bg-base));
+  color:var(--dsw-alias-label-primary);font-size:13.5px;line-height:21px;
+}
+.msg-assistant{max-width:74%;display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:22px;color:var(--dsw-alias-label-secondary)}
+.msg-assistant p{margin:0}
+.fake-code{
+  padding:9px 12px;border-radius:var(--dsw-radius-md);
+  background:var(--dsw-alias-markdown-code-block);
+  color:var(--dsw-alias-label-secondary);
+  font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;
+  border:1px solid var(--dsw-alias-border-l1);
+}
+.stage-composer{
+  margin:0 32px 22px;padding:11px 14px;border-radius:var(--dsw-radius-md);
+  border:1px solid var(--dsw-alias-border-l2);
+  color:var(--dsw-alias-label-caption);font-size:13px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.stage-composer .hint{font-size:11px;opacity:.8}
+
+/* 参照物：右下角已有的 go-svc 胶囊（真实界面 bottom:16px），用来验证不重叠 */
+.fake-pill{
+  position:fixed;right:16px;bottom:16px;z-index:10;
+  display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px 0 10px;
+  border:1px solid var(--dsw-alias-border-l2);border-radius:999px;
+  background:color-mix(in srgb,var(--dsw-alias-bg-base) 88%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
+  box-shadow:var(--dsw-shadow-lv2);
+  font-size:12px;color:var(--dsw-alias-label-secondary);
+}
+.fake-pill i{width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-state-success-primary)}
+.fake-pill b{font-weight:600;color:var(--dsw-alias-label-primary);font-size:12.5px}
+
+/* harness 自身的标注与错误兜底 */
+#harness-meta{
+  position:fixed;left:12px;bottom:10px;z-index:9;
+  font-family:var(--ds-font-family-code);font-size:10px;line-height:14px;
+  color:var(--dsw-alias-label-caption);
+}
+#harness-error{
+  position:fixed;left:12px;top:12px;right:12px;z-index:2147483600;
+  padding:8px 12px;border-radius:var(--dsw-radius-sm);
+  background:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-bg-base);
+  font-family:var(--ds-font-family-code);font-size:12px;white-space:pre-wrap;
+}
+#harness-error[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="rail-brand"><span class="rail-logo"></span>DeepSeek Harness</div>
+    <div class="rail-group">会话</div>
+    <div class="rail-item is-active">端口越攒越多怎么办</div>
+    <div class="rail-item">整理 dsh 插件仓库</div>
+    <div class="rail-item">go-svc 接入调试</div>
+    <div class="rail-group">工作区</div>
+    <div class="rail-item">端口可视化</div>
+    <div class="rail-item">工作区</div>
+  </aside>
+  <main class="stage">
+    <header class="stage-head">
+      <div class="stage-title">端口越攒越多怎么办</div>
+      <div class="stage-sub">D:\dsh\dsh-port-viewer</div>
+    </header>
+    <div class="stage-body">
+      <div class="msg-user">npm run dev 跑完老是忘了关，任务管理器里一堆 node.exe，根本不知道谁是谁。</div>
+      <div class="msg-assistant">
+        <p>本机现在有 16 个监听端口，其中 1 个是父进程已经退出的遗留端口，3 个属于不能碰的 dsh 自身进程，3 个是系统服务。</p>
+        <p>右下角胶囊点开就是按项目分组的端口列表，遗留的排在最前面，可以直接关掉。</p>
+        <div class="fake-code">GET /api/port-viewer/snapshot  →  200 OK · 16 ports / 6 projects</div>
+      </div>
+    </div>
+    <div class="stage-composer"><span>继续输入…</span><span class="hint">Enter 发送</span></div>
+  </main>
+</div>
+
+<div class="fake-pill"><i></i>其它挂件 ·&nbsp;<b>已连接</b></div>
+<div id="harness-meta">harness · theme=? · view=?</div>
+<div id="harness-error" hidden></div>
+
+<script>
+/* ==========================================================================
+   mock 1：加载器。真实 shell 里由 @deepseek-ai/dsh-client-modules 注入
+   ========================================================================== */
+window.__ModuleLoader__ = {
+  load: function (definition) {
+    // factory 是惰性的：此刻只取模块面，不产生任何副作用。
+    window.__pvModule = definition.factory();
+    window.__pvDefinition = definition;
+  }
+};
+</script>
+<script src="../lib/client.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var rawTimeout = window.setTimeout.bind(window);
+  var params = new URLSearchParams(window.location.search);
+  var theme = params.get('theme') === 'light' ? 'light' : 'dark';
+  var view = params.get('view') || 'open';
+  var collapse = params.get('collapse') || '';
+  // 截图需要确定性：冻结 CLI 周期 >= 1s 的定时器（3s 确认倒计时、5s 自动刷新）。
+  var freeze = params.get('freeze') !== '0';
+
+  var meta = document.getElementById('harness-meta');
+  var errorBox = document.getElementById('harness-error');
+
+  function fail(message) {
+    errorBox.hidden = false;
+    errorBox.textContent = String(message);
+  }
+  window.addEventListener('error', function (event) {
+    fail('JS ERROR: ' + event.message + '\n' + (event.filename || '') + ':' + event.lineno);
+  });
+  window.addEventListener('unhandledrejection', function (event) {
+    fail('UNHANDLED REJECTION: ' + (event.reason && event.reason.message ? event.reason.message : event.reason));
+  });
+
+  if (freeze) {
+    window.setTimeout = function (fn, delay) {
+      if (typeof delay === 'number' && delay >= 1000) return rawTimeout(function () {}, 0);
+      return rawTimeout(fn, delay);
+    };
+    window.setInterval = function () { return 0; };
+  }
+
+  // 真实界面里暗色由 shell 驱动；两套主题 CSS 的选择器都是 body[data-ds-dark-theme]，
+  // 这里把它同时挂到 html 与 body 上，两种实现都能命中。
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-ds-dark-theme', 'true');
+    document.body.setAttribute('data-ds-dark-theme', 'true');
+  }
+
+  /* ------------------------------------------------------------------------
+     mock 2：fixture 快照（形状 = CONTRACT §5.4 + 宿主的 exePath / orphanReason）
+     数据刻意覆盖：vite 项目 2 个端口、python 项目、孤儿端口、系统受保护端口、
+     dsh 自身端口、未识别端口、数据库端口。
+     --------------------------------------------------------------------- */
+  function buildSnapshot() {
+    var now = Date.now();
+    var ago = function (ms) { return new Date(now - ms).toISOString(); };
+    var MIN = 60000, HOUR = 3600000;
+
+    function port(spec) {
+      return {
+        port: spec.port,
+        protocol: 'TCP',
+        bindings: spec.bindings,
+        pid: spec.pid,
+        processName: spec.processName,
+        exePath: spec.exePath || null,
+        commandLine: spec.commandLine || null,
+        cwd: spec.cwd || null,
+        startedAt: spec.startedAt,
+        uptimeMs: spec.uptimeMs,
+        workingSetBytes: spec.workingSetBytes,
+        url: spec.url || null,
+        project: spec.project,
+        kind: spec.kind,
+        flags: {
+          orphan: !!spec.orphan,
+          system: !!spec.system,
+          protected: !!spec.protected,
+          opaque: !!spec.opaque,
+          wildcard: !!spec.wildcard,
+          loopbackOnly: !!spec.loopbackOnly
+        },
+        orphanReason: spec.orphan ? (spec.orphanReason || '父进程已退出') : null,
+        protectedReason: spec.protected ? spec.protectedReason : null,
+        killable: !spec.protected
+      };
+    }
+
+    var ports = [
+      // 遗留端口：父进程已退出（agent 跑完忘了关的典型样子）
+      port({
+        port: 3001, bindings: ['127.0.0.1', '[::1]'], pid: 22100, processName: 'node.exe',
+        exePath: 'C:\\Program Files\\nodejs\\node.exe',
+        commandLine: 'node D:\\dev\\old-demo\\node_modules\\next\\dist\\bin\\next dev',
+        cwd: 'D:\\dev\\old-demo', startedAt: ago(3 * HOUR + 12 * MIN), uptimeMs: 3 * HOUR + 12 * MIN,
+        workingSetBytes: 176160768, url: 'http://127.0.0.1:3001/',
+        project: { key: 'D:\\dev\\old-demo', name: 'old-demo', root: 'D:\\dev\\old-demo', source: 'cwd' },
+        kind: 'dev-server', orphan: true, orphanReason: '父进程已退出', loopbackOnly: true
+      }),
+      // vite 项目：dev server + preview
+      port({
+        port: 5173, bindings: ['127.0.0.1', '[::1]'], pid: 18420, processName: 'node.exe',
+        exePath: 'C:\\Program Files\\nodejs\\node.exe',
+        commandLine: 'node D:\\dev\\vite-demo\\node_modules\\vite\\bin\\vite.js --host 127.0.0.1',
+        cwd: 'D:\\dev\\vite-demo', startedAt: ago(2 * HOUR + 13 * MIN), uptimeMs: 2 * HOUR + 13 * MIN,
+        workingSetBytes: 214958080, url: 'http://127.0.0.1:5173/',
+        project: { key: 'D:\\dev\\vite-demo', name: 'vite-demo', root: 'D:\\dev\\vite-demo', source: 'cwd' },
+        kind: 'dev-server', loopbackOnly: true
+      }),
+      port({
+        port: 5174, bindings: ['127.0.0.1', '[::1]'], pid: 19304, processName: 'node.exe',
+        exePath: 'C:\\Program Files\\nodejs\\node.exe',
+        commandLine: 'node D:\\dev\\vite-demo\\node_modules\\vite\\bin\\vite.js preview',
+        cwd: 'D:\\dev\\vite-demo', startedAt: ago(41 * MIN), uptimeMs: 41 * MIN,
+        workingSetBytes: 100663296, url: 'http://127.0.0.1:5174/',
+        project: { key: 'D:\\dev\\vite-demo', name: 'vite-demo', root: 'D:\\dev\\vite-demo', source: 'cwd' },
+        kind: 'dev-server', loopbackOnly: true
+      }),
+      port({
+        port: 24678, bindings: ['127.0.0.1'], pid: 18420, processName: 'node.exe',
+        exePath: 'C:\\Program Files\\nodejs\\node.exe',
+        commandLine: 'node D:\\dev\\vite-demo\\node_modules\\vite\\bin\\vite.js --host 127.0.0.1',
+        cwd: 'D:\\dev\\vite-demo', startedAt: ago(2 * HOUR + 13 * MIN), uptimeMs: 2 * HOUR + 13 * MIN,
+        workingSetBytes: 214958080, url: 'http://127.0.0.1:24678/',
+        project: { key: 'D:\\dev\\vite-demo', name: 'vite-demo', root: 'D:\\dev\\vite-demo', source: 'cwd' },
+        kind: 'dev-server', loopbackOnly: true
+      }),
+      // python 项目：cwd 读不到，归属来自命令行（source=cmdline）
+      port({
+        port: 8000, bindings: ['127.0.0.1'], pid: 15288, processName: 'python.exe',
+        exePath: 'C:\\Users\\dev\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+        commandLine: 'python -m uvicorn app.main:app --reload --port 8000',
+        cwd: null, startedAt: ago(2 * HOUR + 36 * MIN), uptimeMs: 2 * HOUR + 36 * MIN,
+        workingSetBytes: 144703488, url: 'http://127.0.0.1:8000/',
+        project: { key: 'D:\\dev\\api-service', name: 'api-service', root: 'D:\\dev\\api-service', source: 'cmdline' },
+        kind: 'python', loopbackOnly: true
+      }),
+      port({
+        port: 8001, bindings: ['127.0.0.1'], pid: 16100, processName: 'python.exe',
+        exePath: 'C:\\Users\\dev\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+        commandLine: 'python -m uvicorn app.worker:app --port 8001',
+        cwd: null, startedAt: ago(2 * HOUR + 31 * MIN), uptimeMs: 2 * HOUR + 31 * MIN,
+        workingSetBytes: 108003328, url: 'http://127.0.0.1:8001/',
+        project: { key: 'D:\\dev\\api-service', name: 'api-service', root: 'D:\\dev\\api-service', source: 'cmdline' },
+        kind: 'python', loopbackOnly: true
+      }),
+      // 数据库：非 HTTP，端口不可点；对外监听
+      port({
+        port: 5432, bindings: ['0.0.0.0', '[::]'], pid: 9240, processName: 'postgres.exe',
+        exePath: 'C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe',
+        commandLine: '"C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe" -D "D:\\dev\\data-stack\\pgdata"',
+        cwd: 'D:\\dev\\data-stack', startedAt: ago(26 * HOUR + 4 * MIN), uptimeMs: 26 * HOUR + 4 * MIN,
+        workingSetBytes: 62390272, url: null,
+        project: { key: 'D:\\dev\\data-stack', name: 'data-stack', root: 'D:\\dev\\data-stack', source: 'workspace' },
+        kind: 'database', wildcard: true
+      }),
+      port({
+        port: 6379, bindings: ['127.0.0.1'], pid: 11012, processName: 'redis-server.exe',
+        exePath: 'D:\\tools\\redis\\redis-server.exe',
+        commandLine: 'redis-server.exe redis.windows.conf',
+        cwd: 'D:\\dev\\data-stack', startedAt: ago(5 * HOUR + 2 * MIN), uptimeMs: 5 * HOUR + 2 * MIN,
+        workingSetBytes: 14680064, url: null,
+        project: { key: 'D:\\dev\\data-stack', name: 'data-stack', root: 'D:\\dev\\data-stack', source: 'workspace' },
+        kind: 'database', loopbackOnly: true
+      }),
+      // dsh 自身：界面端口（绝对不能关）
+      port({
+        port: 54506, bindings: ['127.0.0.1'], pid: 10352, processName: 'DeepSeek Harness.exe',
+        exePath: 'D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe',
+        commandLine: '"D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe" --profile desktop',
+        cwd: 'D:\\dsh\\home', startedAt: ago(6 * HOUR + 20 * MIN), uptimeMs: 6 * HOUR + 20 * MIN,
+        workingSetBytes: 402653184, url: 'http://127.0.0.1:54506/',
+        project: { key: 'D:\\Apps\\deepseek-harness', name: 'deepseek-harness', root: 'D:\\Apps\\deepseek-harness', source: 'cwd' },
+        kind: 'app', protected: true, protectedReason: 'dsh-ui-port', loopbackOnly: true
+      }),
+      port({
+        port: 54540, bindings: ['127.0.0.1'], pid: 13344, processName: 'DeepSeek Harness.exe',
+        exePath: 'D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe',
+        commandLine: '"D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe" --type=renderer',
+        cwd: 'D:\\dsh\\home', startedAt: ago(6 * HOUR + 19 * MIN), uptimeMs: 6 * HOUR + 19 * MIN,
+        workingSetBytes: 268435456, url: null,
+        project: { key: 'D:\\Apps\\deepseek-harness', name: 'deepseek-harness', root: 'D:\\Apps\\deepseek-harness', source: 'cwd' },
+        kind: 'app', protected: true, protectedReason: 'dsh-self', loopbackOnly: true
+      }),
+      // 未识别：读不到工作目录（source=none），必须显示而不是丢弃
+      port({
+        port: 8791, bindings: ['127.0.0.1'], pid: 17228, processName: 'svc-agent.exe',
+        exePath: 'D:\\dsh\\wb2a\\bin\\svc-agent.exe',
+        commandLine: 'svc-agent.exe --listen 127.0.0.1:8791', cwd: null,
+        startedAt: ago(8 * HOUR + 6 * MIN), uptimeMs: 8 * HOUR + 6 * MIN,
+        workingSetBytes: 62914560, url: 'http://127.0.0.1:8791/',
+        project: { key: 'unknown:17228', name: 'svc-agent.exe', root: null, source: 'none' },
+        kind: 'app', loopbackOnly: true
+      }),
+      // 不透明进程：SYSTEM 账户拉起的服务，读不到身份 → 宿主标 opaque-process 且受保护
+      port({
+        port: 7897, bindings: ['127.0.0.1'], pid: 11348, processName: 'verge-mihomo.exe',
+        exePath: null, commandLine: null, cwd: null,
+        startedAt: ago(9 * HOUR + 4 * MIN), uptimeMs: 9 * HOUR + 4 * MIN,
+        workingSetBytes: 0, url: null,
+        project: { key: 'unknown:11348', name: 'verge-mihomo.exe', root: null, source: 'none' },
+        kind: 'unknown', protected: true, protectedReason: 'opaque-process', opaque: true, loopbackOnly: true
+      }),
+      port({
+        port: 62695, bindings: ['127.0.0.1'], pid: 11348, processName: 'verge-mihomo.exe',
+        exePath: null, commandLine: null, cwd: null,
+        startedAt: ago(9 * HOUR + 4 * MIN), uptimeMs: 9 * HOUR + 4 * MIN,
+        workingSetBytes: 0, url: null,
+        project: { key: 'unknown:11348', name: 'verge-mihomo.exe', root: null, source: 'none' },
+        kind: 'unknown', protected: true, protectedReason: 'opaque-process', opaque: true, loopbackOnly: true
+      }),
+      // Windows 系统：collector 合并成一组（key='system'、root=null、source='system'），默认收起
+      port({
+        port: 135, bindings: ['0.0.0.0'], pid: 2084, processName: 'svchost.exe',
+        exePath: 'C:\\Windows\\System32\\svchost.exe',
+        commandLine: 'C:\\Windows\\system32\\svchost.exe -k RPCSS -p',
+        cwd: 'C:\\Windows\\System32', startedAt: ago(26 * HOUR + 41 * MIN), uptimeMs: 26 * HOUR + 41 * MIN,
+        workingSetBytes: 14680064, url: null,
+        project: { key: 'system', name: 'Windows 系统', root: null, source: 'system' },
+        kind: 'system', protected: true, protectedReason: 'system-process', system: true, wildcard: true
+      }),
+      port({
+        port: 49664, bindings: ['0.0.0.0'], pid: 1916, processName: 'lsass.exe',
+        exePath: 'C:\\Windows\\System32\\lsass.exe',
+        commandLine: 'C:\\Windows\\system32\\lsass.exe',
+        cwd: 'C:\\Windows\\System32', startedAt: ago(26 * HOUR + 40 * MIN), uptimeMs: 26 * HOUR + 40 * MIN,
+        workingSetBytes: 20971520, url: null,
+        project: { key: 'system', name: 'Windows 系统', root: null, source: 'system' },
+        kind: 'system', protected: true, protectedReason: 'system-process', system: true, wildcard: true
+      }),
+      port({
+        port: 445, bindings: ['0.0.0.0'], pid: 4, processName: 'System',
+        exePath: null, commandLine: null, cwd: null,
+        startedAt: ago(26 * HOUR + 44 * MIN), uptimeMs: 26 * HOUR + 44 * MIN,
+        workingSetBytes: 4096, url: null,
+        project: { key: 'system', name: 'Windows 系统', root: null, source: 'system' },
+        kind: 'system', protected: true, protectedReason: 'system-pid', system: true, wildcard: true
+      })
+    ];
+
+    var projects = [];
+    var byKey = {};
+    ports.forEach(function (entry) {
+      var project = entry.project;
+      if (project.source === 'none') return;
+      var bucket = byKey[project.key];
+      if (!bucket) {
+        bucket = byKey[project.key] = {
+          key: project.key, name: project.name, root: project.root, source: project.source,
+          portCount: 0, ports: [], killableCount: 0, protectedCount: 0, orphanCount: 0
+        };
+        projects.push(bucket);
+      }
+      bucket.portCount += 1;
+      if (bucket.ports.indexOf(entry.port) < 0) bucket.ports.push(entry.port);
+      if (entry.killable) bucket.killableCount += 1;
+      if (entry.flags.protected) bucket.protectedCount += 1;
+      if (entry.flags.orphan) bucket.orphanCount += 1;
+    });
+
+    return {
+      ok: true,
+      schemaVersion: 1,
+      generatedAt: new Date(now).toISOString(),
+      durationMs: 612,
+      ports: ports,
+      projects: projects,
+      stats: {
+        portCount: ports.length,
+        projectCount: projects.length,
+        orphanCount: ports.filter(function (p) { return p.flags.orphan; }).length,
+        protectedCount: ports.filter(function (p) { return p.flags.protected; }).length,
+        killableCount: ports.filter(function (p) { return p.killable; }).length
+      },
+      warnings: ['2 个端口读不到工作目录（系统进程或更高权限进程属正常）']
+    };
+  }
+
+  function emptySnapshot() {
+    return {
+      ok: true, schemaVersion: 1, generatedAt: new Date().toISOString(), durationMs: 208,
+      ports: [], projects: [],
+      stats: { portCount: 0, projectCount: 0, orphanCount: 0, protectedCount: 0, killableCount: 0 },
+      warnings: []
+    };
+  }
+
+  /* ------------------------------------------------------------------------
+     mock 3：fetch
+     --------------------------------------------------------------------- */
+  var snapshot = view === 'empty' ? emptySnapshot() : buildSnapshot();
+
+  // 记录 mock 请求（真 fetch 被替换了，CDP 的 Network 事件看不到），并支持 ?delay=ms
+  // 模拟慢宿主，用来验证「刷新中禁用按钮」这类状态。
+  var requestLog = [];
+  var slowMs = Number(params.get('delay') || 0);
+  function record(url, init) {
+    requestLog.push({
+      method: (init && init.method) || 'GET',
+      url: String(url),
+      body: init && init.body ? String(init.body) : null
+    });
+  }
+  function slow(promise) {
+    if (!slowMs) return promise;
+    return new Promise(function (resolve) {
+      rawTimeout(function () { resolve(promise); }, slowMs);
+    });
+  }
+
+  function respond(body, status) {
+    return Promise.resolve({
+      ok: status >= 200 && status < 300,
+      status: status,
+      text: function () { return Promise.resolve(JSON.stringify(body)); }
+    });
+  }
+
+  window.fetch = function (url, init) {
+    record(url, init);
+    var target = String(url);
+    if (target.indexOf('/api/port-viewer/kill') >= 0) {
+      var payload = { ok: false, killed: 0, results: [], failed: [] };
+      try {
+        var sent = JSON.parse(init && init.body ? init.body : '{"targets":[]}');
+        var targets = sent && Array.isArray(sent.targets) ? sent.targets : [];
+        if (params.get('kill') === 'ok') {
+          // 成功路径：宿主返回 results，客户端应提示「已关闭 N 个端口」并刷新列表
+          payload = { ok: true, killed: targets.length, results: targets.map(function (target) {
+            return { port: target.port, pid: target.pid, ok: true };
+          }), failed: [] };
+        } else {
+          payload.failed = targets.map(function (target) {
+            return {
+              port: target.port, pid: target.pid, error: 'stale', currentPid: 24410,
+              message: '这个端口已经不属于该进程了（可能已经退出或被重新占用）'
+            };
+          });
+        }
+      } catch (_error) { /* 保持空结果 */ }
+      return slow(respond(payload, 200));
+    }
+    if (view === 'loading') return new Promise(function () {});
+    if (view === 'error') return Promise.reject(new TypeError('Failed to fetch'));
+    return slow(respond(snapshot, 200));
+  };
+
+  /* ------------------------------------------------------------------------
+     启动：mock ctx.effect → apply(ctx)
+     --------------------------------------------------------------------- */
+  var disposers = [];
+  var ctx = {
+    effect: function (fn) {
+      var dispose = fn();
+      if (typeof dispose === 'function') disposers.push(dispose);
+      return function () {};
+    }
+  };
+
+  function boot() {
+    var mod = window.__pvModule;
+    if (!mod || typeof mod.apply !== 'function') {
+      fail('client.js 没有注册 {name, apply}：请检查 window.__ModuleLoader__.load 的调用。');
+      return;
+    }
+    mod.apply(ctx);
+    meta.textContent = 'harness · theme=' + theme + ' · view=' + view;
+    rawTimeout(drive, 50);
+  }
+
+  function q(selector) { return document.querySelector('#dsh-port-viewer-root ' + selector); }
+
+  function drive() {
+    var pill = q('.pv-pill');
+    if (!pill) { fail('胶囊没有渲染出来（.pv-pill 不存在）'); return; }
+
+    if (view !== 'closed') pill.click();
+
+    if (view === 'confirm') {
+      rawTimeout(function () {
+        var killBtn = q('.pv-row[data-port="5173"] .pv-kill');
+        if (!killBtn) { fail('找不到 5173 行的「关闭」按钮'); return; }
+        killBtn.click();
+      }, 60);
+    }
+
+    if (view === 'group-confirm') {
+      rawTimeout(function () { clickGroupKill('vite-demo'); }, 60);
+    }
+
+    if (view === 'search') {
+      var input = q('.pv-search input');
+      if (input) {
+        input.value = 'uvicorn';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+
+    if (collapse) {
+      rawTimeout(function () { clickGroupToggle(collapse); }, 60);
+    }
+
+    if (params.get('expand') === 'all') {
+      rawTimeout(function () {
+        document.querySelectorAll('#dsh-port-viewer-root .pv-gtoggle[aria-expanded=false]')
+          .forEach(function (node) { node.click(); });
+      }, 60);
+    }
+  }
+
+  function findGroup(name) {
+    var groups = document.querySelectorAll('#dsh-port-viewer-root .pv-group');
+    for (var i = 0; i < groups.length; i += 1) {
+      var label = groups[i].querySelector('.pv-gname');
+      if (label && label.textContent === name) return groups[i];
+    }
+    return null;
+  }
+
+  function clickGroupKill(name) {
+    var group = findGroup(name);
+    var button = group ? group.querySelector('.pv-gkill') : null;
+    if (!button) { fail('分组「' + name + '」没有「关闭全部」按钮'); return; }
+    button.click();
+  }
+
+  function clickGroupToggle(name) {
+    var group = findGroup(name);
+    var button = group ? group.querySelector('.pv-gtoggle') : null;
+    if (!button) { fail('分组「' + name + '」不存在'); return; }
+    button.click();
+  }
+
+  /* ------------------------------------------------------------------------
+     自检数据：几何 / 溢出 / 截断 / 对比度写成 JSON 塞进 #harness-diag，
+     用 `msedge --headless --dump-dom` 就能读（不靠肉眼也能查回归）。
+     --------------------------------------------------------------------- */
+  var diagBox = document.createElement('pre');
+  diagBox.id = 'harness-diag';
+  diagBox.hidden = true;
+  document.body.appendChild(diagBox);
+
+  function parseColor(value) {
+    if (!value) return null;
+    var text = String(value).trim();
+    var m = text.match(/^rgba?\(([^)]+)\)$/);
+    if (m) {
+      var parts = m[1].split(/[,\s/]+/).filter(function (s) { return s !== ''; });
+      return [Number(parts[0]), Number(parts[1]), Number(parts[2]), parts.length > 3 ? Number(parts[3]) : 1];
+    }
+    m = text.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)$/);
+    if (m) {
+      return [
+        Math.round(Number(m[1]) * 255), Math.round(Number(m[2]) * 255), Math.round(Number(m[3]) * 255),
+        m[4] === undefined ? 1 : Number(m[4])
+      ];
+    }
+    return null;
+  }
+
+  function luminance(rgb) {
+    var channels = rgb.slice(0, 3).map(function (v) {
+      var c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  }
+
+  function contrast(fg, bg) {
+    if (!fg || !bg || fg[3] === 0) return null;
+    var l1 = luminance(fg), l2 = luminance(bg);
+    var hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+    return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+  }
+
+  function collectDiag() {
+    var root = document.getElementById('dsh-port-viewer-root');
+    if (!root) return { error: 'no #dsh-port-viewer-root' };
+    var drawer = root.querySelector('.pv-drawer');
+    var pill = root.querySelector('.pv-pill');
+    function rect(node) {
+      if (!node) return null;
+      var r = node.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+    }
+    var overflow = [];
+    root.querySelectorAll('*').forEach(function (node) {
+      var r = node.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      if (r.right > window.innerWidth + 0.5 || r.bottom > window.innerHeight + 0.5
+        || r.left < -0.5 || r.top < -0.5) {
+        overflow.push((node.className || node.tagName) + ' @'
+          + Math.round(r.left) + ',' + Math.round(r.top) + ' '
+          + Math.round(r.width) + 'x' + Math.round(r.height));
+      }
+    });
+    var clipped = [];
+    root.querySelectorAll('.pv-proc-name,.pv-path,.pv-stats,.pv-confirm-q,.pv-gname,.pv-badge').forEach(function (node) {
+      if (node.scrollWidth > node.clientWidth + 1) {
+        clipped.push((node.className || '') + ':' + String(node.textContent).slice(0, 30));
+      }
+    });
+    var probe = document.createElement('div');
+    probe.style.background = 'var(--dsw-alias-bg-base)';
+    document.body.appendChild(probe);
+    var base = parseColor(getComputedStyle(probe).backgroundColor);
+    document.body.removeChild(probe);
+    var sheet = drawer ? parseColor(getComputedStyle(drawer).backgroundColor) : null;
+    function ratio(selector) {
+      var node = root.querySelector(selector);
+      if (!node) return null;
+      var fg = parseColor(getComputedStyle(node).color);
+      var own = parseColor(getComputedStyle(node).backgroundColor);
+      var bg = base;
+      if (own && own[3] > 0.5) bg = own;
+      return contrast(fg, bg);
+    }
+    var bodyEl = root.querySelector('.pv-body');
+    return {
+      view: view,
+      theme: theme,
+      pill: rect(pill),
+      viewport: { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio, scrollH: document.documentElement.scrollHeight },
+      root: rect(root),
+      drawer: rect(drawer),
+      rows: root.querySelectorAll('.pv-row').length,
+      groups: root.querySelectorAll('.pv-group').length,
+      bodyOverflowY: bodyEl ? bodyEl.scrollHeight - bodyEl.clientHeight : null,
+      overflow: overflow,
+      clipped: clipped,
+      contrastAgainstBase: {
+        title: ratio('.pv-title'),
+        gname: ratio('.pv-gname'),
+        procName: ratio('.pv-proc-name'),
+        pid: ratio('.pv-pid'),
+        num: ratio('.pv-num'),
+        stats: ratio('.pv-stats'),
+        badgeWarn: ratio('.pv-badge[data-tone=warn]'),
+        badgeNeutral: ratio('.pv-badge[data-tone=neutral]'),
+        pillLabel: ratio('.pv-pill-label'),
+        pillCount: ratio('.pv-pill-count')
+      },
+      baseColor: base,
+      sheetColor: sheet,
+      harnessError: (document.getElementById('harness-error') || {}).textContent || ''
+    };
+  }
+
+  rawTimeout(function () {
+    try {
+      diagBox.textContent = JSON.stringify(collectDiag());
+    } catch (error) {
+      diagBox.textContent = JSON.stringify({ diagError: String((error && error.message) || error) });
+    }
+  }, 320);
+
+  /** 给外部检查用：当前视图形状与 DOM 行数。 */
+  window.__harness = {
+    view: view,
+    theme: theme,
+    portCount: function () { return snapshot && snapshot.ports ? snapshot.ports.length : 0; },
+    requests: function () { return requestLog.slice(); },
+    remount: function () { window.__pvModule.apply(ctx); },
+    rows: function () { return document.querySelectorAll('#dsh-port-viewer-root .pv-row').length; },
+    groups: function () { return document.querySelectorAll('#dsh-port-viewer-root .pv-group').length; },
+    text: function () { return (document.getElementById('dsh-port-viewer-root') || {}).innerText || ''; },
+    dispose: function () { disposers.splice(0).forEach(function (fn) { fn(); }); }
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
+})();
+</script>
+</body>
+</html>

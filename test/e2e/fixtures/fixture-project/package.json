@@ -1,0 +1,6 @@
+{
+  "name": "dsh-port-viewer-e2e-fixture-project",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Project-root marker for the isolated E2E: test/e2e spawns the sacrificial listener with this directory as its working directory, so the collector has to attribute port 45678 to this fixture project (package.json is a project-root signpost)."
+}

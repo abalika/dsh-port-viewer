@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+*.tgz
+
+# 本地端到端验证生成的隔离实例：里面会有 DSH_HOME 副本、会话记录、带 token 的启动日志，
+# 绝不能提交。
+.verify/
+.backups/
+
+# 验证产物：截图与报告里带着本机真实端口 / 进程 / 路径信息
+test/e2e/report.json
+test/e2e/shots/
+test/panel-shots/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.log
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 手动测试端口面板用的临时 demo 服务
+.demo/

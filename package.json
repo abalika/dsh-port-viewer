@@ -1,0 +1,54 @@
+{
+  "name": "dsh-port-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adds a port dashboard to the dsh Web UI: every TCP listener grouped by the project it belongs to, with a guarded kill button.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "port",
+    "process",
+    "dev-server"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "os": [
+    "win32"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abalika/dsh-port-viewer.git"
+  },
+  "homepage": "https://github.com/abalika/dsh-port-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/abalika/dsh-port-viewer/issues"
+  },
+  "license": "MIT"
+}

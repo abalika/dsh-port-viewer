@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-25T10:00:00.000+08:00",
+  "computerName": "FIXTURE-PC",
+  "timingsMs": { "compile": 0, "netstat": 0, "processes": 0, "cwd": 0, "total": 0 },
+  "listeners": [
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 5173, "pid": 100 },
+    { "protocol": "TCP", "localAddress": "[::]", "port": 5173, "pid": 100 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 5173, "pid": 100 },
+    { "protocol": "TCP", "localAddress": "0.0.0.0", "port": 5174, "pid": 100 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 3000, "pid": 110 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 9229, "pid": 120 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 8000, "pid": 300 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 8000, "pid": 1001 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 5175, "pid": 1001 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 9222, "pid": 400 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 54522, "pid": 400 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 7863, "pid": 500 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 54803, "pid": 600 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 7897, "pid": 700 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 54506, "pid": 800 },
+    { "protocol": "TCP", "localAddress": "0.0.0.0", "port": 135, "pid": 900 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 8080, "pid": 1100 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 9000, "pid": 1300 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 18888, "pid": 1500 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 19999, "pid": 1600 },
+    { "protocol": "TCP", "localAddress": "127.0.0.1", "port": 3306, "pid": 1700 }
+  ],
+  "processes": [
+    {
+      "pid": 4, "ppid": 0, "name": "System", "exe": null, "cmdLine": null,
+      "startedAt": "2026-10-20T00:00:00.000+08:00", "workingSetBytes": 0, "cwd": null
+    },
+    {
+      "pid": 60, "ppid": 0, "name": "explorer.exe", "exe": "C:\\Windows\\Explorer.EXE",
+      "cmdLine": "C:\\Windows\\Explorer.EXE", "startedAt": "2026-10-20T00:00:05.000+08:00",
+      "workingSetBytes": 104857600, "cwd": null
+    },
+    {
+      "pid": 50, "ppid": 60, "name": "pwsh.exe", "exe": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+      "cmdLine": "pwsh.exe", "startedAt": "2026-10-25T06:00:00.000+08:00",
+      "workingSetBytes": 1048576, "cwd": "D:\\work\\acme-web"
+    },
+    {
+      "pid": 100, "ppid": 50, "name": "node.exe", "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmdLine": "node D:\\work\\acme-web\\node_modules\\vite\\bin\\vite.js --host",
+      "startedAt": "2026-10-25T08:00:00.000+08:00", "workingSetBytes": 104857600,
+      "cwd": "D:\\work\\acme-web"
+    },
+    {
+      "pid": 110, "ppid": 60, "name": "node.exe", "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmdLine": "node D:\\work\\next-app\\node_modules\\next\\dist\\bin\\next dev",
+      "startedAt": "2026-10-25T08:30:00.000+08:00", "workingSetBytes": 209715200,
+      "cwd": "D:\\work\\next-app"
+    },
+    {
+      "pid": 120, "ppid": 60, "name": "node.exe", "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmdLine": "node \"D:\\work\\acme-web\\node_modules\\vite\\bin\\vite.js\"",
+      "startedAt": "2026-10-25T08:40:00.000+08:00", "workingSetBytes": 83886080,
+      "cwd": "C:\\Users\\tester\\AppData\\Local\\Temp"
+    },
+    {
+      "pid": 300, "ppid": 60, "name": "python.exe", "exe": "D:\\ai\\llm-svc\\.venv\\Scripts\\python.exe",
+      "cmdLine": "\"D:\\ai\\llm-svc\\.venv\\Scripts\\python.exe\" -m uvicorn app.main:app --port 8000",
+      "startedAt": "2026-10-25T09:00:00.000+08:00", "workingSetBytes": 157286400,
+      "cwd": "D:\\ai\\llm-svc"
+    },
+    {
+      "pid": 400, "ppid": 800, "name": "electron.exe", "exe": "D:\\dsh\\home\\electron\\electron.exe",
+      "cmdLine": "D:\\dsh\\home\\electron\\electron.exe D:\\dsh\\home\\profiles\\desktop\\node_modules\\dsh-pet\\runtime\\electron-main.js",
+      "startedAt": "2026-10-25T07:00:00.000+08:00", "workingSetBytes": 314572800,
+      "cwd": "D:\\dsh\\home\\profiles\\desktop\\node_modules\\dsh-pet"
+    },
+    {
+      "pid": 4924, "ppid": 1864, "name": "clash-verge-service.exe", "exe": null, "cmdLine": null,
+      "startedAt": "2026-10-25T01:00:00.000+08:00", "workingSetBytes": 5242880, "cwd": null
+    },
+    {
+      "pid": 500, "ppid": 800, "name": "svc-agent.exe",
+      "exe": "D:\\codex\\dsh-helper\\dist\\svc-agent.exe",
+      "cmdLine": "D:\\codex\\dsh-helper\\dist\\svc-agent.exe",
+      "startedAt": "2026-10-25T06:00:00.000+08:00", "workingSetBytes": 31457280,
+      "cwd": "D:\\Apps\\go-svc"
+    },
+    {
+      "pid": 600, "ppid": 60, "name": "clash-verge.exe", "exe": "D:\\Apps\\ClashVerge\\Clash Verge\\clash-verge.exe",
+      "cmdLine": "\"D:\\Apps\\ClashVerge\\Clash Verge\\clash-verge.exe\"",
+      "startedAt": "2026-10-25T05:00:00.000+08:00", "workingSetBytes": 73400320,
+      "cwd": "D:\\Apps\\ClashVerge\\Clash Verge"
+    },
+    {
+      "pid": 700, "ppid": 4924, "name": "verge-mihomo.exe", "exe": null, "cmdLine": null,
+      "startedAt": "2026-10-25T04:00:00.000+08:00", "workingSetBytes": 41943040, "cwd": null
+    },
+    {
+      "pid": 750, "ppid": 60, "name": "DeepSeek Harness.exe", "exe": "D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe",
+      "cmdLine": "\"D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe\" --expose-internals D:\\Apps\\deepseek-harness\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-desktop-host\\lib\\cli.js",
+      "startedAt": "2026-10-25T02:00:00.000+08:00", "workingSetBytes": 209715200,
+      "cwd": "D:\\Apps\\deepseek-harness"
+    },
+    {
+      "pid": 800, "ppid": 750, "name": "DeepSeek Harness.exe", "exe": "D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe",
+      "cmdLine": "\"D:\\Apps\\deepseek-harness\\DeepSeek Harness.exe\" --expose-internals D:\\Apps\\deepseek-harness\\resources\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-desktop-host\\lib\\cli.js",
+      "startedAt": "2026-10-25T03:00:00.000+08:00", "workingSetBytes": 419430400,
+      "cwd": "D:\\dsh\\home\\profiles\\desktop"
+    },
+    {
+      "pid": 900, "ppid": 4, "name": "svchost.exe", "exe": "C:\\Windows\\System32\\svchost.exe",
+      "cmdLine": "C:\\Windows\\system32\\svchost.exe -k netsvcs -p", "startedAt": "2026-10-20T00:01:00.000+08:00",
+      "workingSetBytes": 12582912, "cwd": "C:\\Windows\\system32"
+    },
+    {
+      "pid": 1001, "ppid": 9999, "name": "node.exe", "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmdLine": "node D:\\work\\stray\\server.js", "startedAt": "2026-10-25T09:30:00.000+08:00",
+      "workingSetBytes": 62914560, "cwd": "D:\\work\\stray"
+    },
+    {
+      "pid": 1100, "ppid": 60, "name": "java.exe", "exe": "C:\\Program Files\\Java\\jdk-17\\bin\\java.exe",
+      "cmdLine": "java -jar D:\\work\\orders\\service\\target\\app.jar",
+      "startedAt": "2026-10-25T08:30:00.000+08:00", "workingSetBytes": 524288000,
+      "cwd": "D:\\work\\orders\\service"
+    },
+    {
+      "pid": 1200, "ppid": 4, "name": "conhost.exe", "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmdLine": "conhost.exe", "startedAt": "2026-10-25T09:59:00.000+08:00",
+      "workingSetBytes": 4194304, "cwd": null
+    },
+    {
+      "pid": 1300, "ppid": 1200, "name": "node.exe", "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmdLine": "node D:\\work\\acme-web\\node_modules\\vite\\bin\\vite.js",
+      "startedAt": "2026-10-25T09:00:00.000+08:00", "workingSetBytes": 73400320,
+      "cwd": null
+    },
+    {
+      "pid": 1500, "ppid": 0, "name": "python.exe", "exe": "C:\\Python312\\python.exe",
+      "cmdLine": "python D:\\work\\tools\\helper\\run.py",
+      "startedAt": "2026-10-25T09:10:00.000+08:00", "workingSetBytes": 31457280, "cwd": null
+    },
+    {
+      "pid": 1600, "ppid": 60, "name": "mystery.exe", "exe": null, "cmdLine": "mystery.exe --watch",
+      "startedAt": "2026-10-25T09:20:00.000+08:00", "workingSetBytes": 8388608, "cwd": null
+    },
+    {
+      "pid": 1700, "ppid": 4, "name": "mysqld.exe", "exe": "C:\\Program Files\\MySQL\\bin\\mysqld.exe",
+      "cmdLine": "\"C:\\Program Files\\MySQL\\bin\\mysqld.exe\" --defaults-file=D:\\db\\mysql\\my.ini",
+      "startedAt": "2026-10-25T00:30:00.000+08:00", "workingSetBytes": 838860800,
+      "cwd": "D:\\db\\mysql"
+    },
+    {
+      "pid": 1864, "ppid": 1732, "name": "services.exe", "exe": "C:\\Windows\\system32\\services.exe",
+      "cmdLine": "C:\\Windows\\system32\\services.exe", "startedAt": "2026-10-20T00:00:02.000+08:00",
+      "workingSetBytes": 6291456, "cwd": "C:\\Windows\\system32"
+    },
+    {
+      "pid": 1732, "ppid": 0, "name": "wininit.exe", "exe": "C:\\Windows\\system32\\wininit.exe",
+      "cmdLine": "wininit.exe", "startedAt": "2026-10-20T00:00:01.000+08:00",
+      "workingSetBytes": 4194304, "cwd": null
+    }
+  ],
+  "errors": []
+}
